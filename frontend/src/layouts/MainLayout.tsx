@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Activity, Server, LayoutDashboard, MonitorSpeaker, Settings, Map, FileWarning, Zap, Microscope } from 'lucide-react';
+import { Activity, Server, LayoutDashboard, MonitorSpeaker, Settings, Map, FileWarning, Zap, Microscope, BarChart3 } from 'lucide-react';
 import { simulationEngine } from '../services/SimulationEngine';
 
 export const MainLayout = () => {
@@ -34,6 +34,7 @@ export const MainLayout = () => {
           <NavItem to="/alerts" icon={<FileWarning size={20} strokeWidth={2.5} />} label="Alerts" />
           <NavItem to="/rca" icon={<Microscope size={20} strokeWidth={2.5} />} label="Root Cause Analysis" />
           <NavItem to="/production" icon={<Activity size={20} strokeWidth={2.5} />} label="Reports & Export" />
+          <NavItem to="/production-data" icon={<BarChart3 size={20} strokeWidth={2.5} />} label="Production Data" />
           <NavItem to="/energy" icon={<Zap size={20} strokeWidth={2.5} />} label="Energy" />
           <NavItem to="/digital-twin" icon={<Map size={20} strokeWidth={2.5} />} label="Digital Twin" />
           <div className="my-4 border-t-[3px] border-neo-black" />

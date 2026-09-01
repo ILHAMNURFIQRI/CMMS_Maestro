@@ -4,6 +4,7 @@ import { Dashboard, PlaceholderPage } from './pages/Dashboard';
 import { FleetMonitoring } from './pages/FleetMonitoring';
 import { MachineDetail } from './pages/MachineDetail';
 import { Reports } from './pages/Reports';
+import { ProductionData } from './pages/ProductionData';
 import { Alerts } from './pages/Alerts';
 import { RootCauseAnalysis } from './pages/RootCauseAnalysis';
 import { Energy } from './pages/Energy';
@@ -20,6 +21,7 @@ function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="rca" element={<RootCauseAnalysis />} />
           <Route path="production" element={<Reports />} />
+          <Route path="production-data" element={<ProductionData />} />
           <Route path="energy" element={<Energy />} />
           <Route path="digital-twin" element={<DigitalTwin />} />
           <Route path="diagnostics" element={<PlaceholderPage title="System Diagnostics" />} />

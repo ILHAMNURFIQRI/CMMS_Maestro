@@ -1,5 +1,5 @@
 import { LocalStore } from './LocalStore';
-import type { Machine, Telemetry, Alert, RootCauseAnalysis } from '../types/machine';
+import type { Machine, Telemetry, Alert, RootCauseAnalysis, ProductionMetrics, EnergyMetrics } from '../types/machine';
 
 export type ScenarioType = 'NORMAL' | 'OVERLOAD' | 'OVERHEAT' | 'VIBRATION' | 'RPM_DROP' | 'CRITICAL';
 
@@ -12,6 +12,9 @@ export class SimulationEngine {
     if (this.timer) return;
     LocalStore.initialize();
     
+    // Seed production + energy metrics immediately on start
+    this.seedProductionAndEnergy();
+
     // Simulate 15 dummy machines every 5 seconds
     this.timer = window.setInterval(() => this.tick(), 5000);
     
@@ -187,6 +190,82 @@ export class SimulationEngine {
     }
   }
 
+  /* ------------------------------------------------------------ */
+  /*  Production & Energy Metrics Generation                       */
+  /* ------------------------------------------------------------ */
+
+  private generateProductionMetrics(machine: Machine, telemetry: Telemetry): void {
+    const production = LocalStore.get<ProductionMetrics[]>('mandor_production', []);
+    const health = machine.health_score;
+
+    // Derive realistic production numbers from health + telemetry
+    const seed = machine.id.charCodeAt(machine.id.length - 1);
+    const baseOutput = 800 + seed * 12;                       // 800–1000 range
+    const healthFactor = health / 100;
+    const rpmFactor = Math.min(1, telemetry.rpm / 500);
+
+    const availability = Math.min(99, Math.round(75 + healthFactor * 24 + (Math.random() * 2 - 1)));
+    const performance  = Math.min(99, Math.round(70 + rpmFactor * 25 + (Math.random() * 2 - 1)));
+    const quality      = Math.min(100, Math.round(88 + healthFactor * 11 + (Math.random() * 1 - 0.5)));
+    const oee          = +((availability * performance * quality) / 10000).toFixed(1);
+
+    const productionOutput = Math.round(baseOutput * healthFactor * rpmFactor);
+    const defectCount      = Math.round(productionOutput * ((100 - quality) / 100));
+    const cycleTime        = +(18 + (1 - healthFactor) * 12 + (Math.random() * 2 - 1)).toFixed(1);
+    const downtime         = Math.round((100 - availability) * 4.8);  // minutes
+
+    const metrics: ProductionMetrics = {
+      machine_id: machine.id,
+      oee,
+      availability,
+      performance,
+      quality,
+      cycle_time: cycleTime,
+      production_output: productionOutput,
+      defect_count: defectCount,
+      downtime,
+    };
+
+    const existingIdx = production.findIndex(p => p.machine_id === machine.id);
+    if (existingIdx !== -1) production[existingIdx] = metrics;
+    else production.push(metrics);
+
+    LocalStore.set('mandor_production', production);
+  }
+
+  private generateEnergyMetrics(machine: Machine, telemetry: Telemetry): void {
+    const energy = LocalStore.get<EnergyMetrics[]>('mandor_energy', []);
+
+    const consumption = +(telemetry.power * (0.9 + Math.random() * 0.2)).toFixed(1);
+    const saved       = +(consumption * (machine.health_score / 100) * 0.12).toFixed(1);
+
+    const metrics: EnergyMetrics = {
+      machine_id: machine.id,
+      energy_consumption: consumption,
+      energy_saved: saved,
+    };
+
+    const existingIdx = energy.findIndex(e => e.machine_id === machine.id);
+    if (existingIdx !== -1) energy[existingIdx] = metrics;
+    else energy.push(metrics);
+
+    LocalStore.set('mandor_energy', energy);
+  }
+
+  /** Seed production + energy for ALL machines immediately so pages have data on load */
+  private seedProductionAndEnergy(): void {
+    const machines = LocalStore.getMachines();
+    for (const m of machines) {
+      const telHistory = LocalStore.getTelemetry(m.id);
+      // Use latest telemetry if available, otherwise fabricate a baseline
+      const tel = telHistory.length > 0
+        ? telHistory[telHistory.length - 1]
+        : this.generateBaseline(m);
+      this.generateProductionMetrics(m, tel);
+      this.generateEnergyMetrics(m, tel);
+    }
+  }
+
   private tick() {
     const machines = LocalStore.getMachines().filter(m => m.id !== 'M-16');
     machines.forEach(machine => {
@@ -194,6 +273,8 @@ export class SimulationEngine {
       t = this.applyScenario(machine, t);
       LocalStore.addTelemetry(t);
       this.evaluateMachine(machine, t);
+      this.generateProductionMetrics(machine, t);
+      this.generateEnergyMetrics(machine, t);
     });
     // Trigger re-render by dispatching event
     window.dispatchEvent(new Event('mandor-data-update'));
@@ -222,8 +303,11 @@ export class SimulationEngine {
 
     LocalStore.addTelemetry(t);
     this.evaluateMachine(m16, t);
+    this.generateProductionMetrics(m16, t);
+    this.generateEnergyMetrics(m16, t);
     window.dispatchEvent(new Event('mandor-data-update'));
   }
 }
 
 export const simulationEngine = new SimulationEngine();
+
