@@ -1,5 +1,10 @@
-export type MachineStatus = 'NORMAL' | 'MONITORING' | 'WARNING' | 'INTERVENTION' | 'CRITICAL';
-export type DataSource = 'SIMULATION' | 'MQTT';
+export type MachineStatus =
+  | "NORMAL"
+  | "MONITORING"
+  | "WARNING"
+  | "INTERVENTION"
+  | "CRITICAL";
+export type DataSource = "SIMULATION" | "MQTT";
 
 export interface Machine {
   id: string;
@@ -10,7 +15,7 @@ export interface Machine {
   status: MachineStatus;
   health_score: number;
   data_source: DataSource;
-  mqtt_status?: 'CONNECTED' | 'DISCONNECTED' | 'RECONNECTING';
+  mqtt_status?: "CONNECTED" | "DISCONNECTED" | "RECONNECTING";
 }
 
 export interface Telemetry {
@@ -23,6 +28,8 @@ export interface Telemetry {
   power: number;
   target_rpm?: number;
   actual_rpm?: number;
+  status?: MachineStatus;
+  status_reason?: string;
 }
 
 export interface ProductionMetrics {
@@ -56,7 +63,7 @@ export interface Alert {
   id: string;
   machine_id: string;
   timestamp: string;
-  type: 'INFO' | 'WARNING' | 'INTERVENTION' | 'CRITICAL';
+  type: "INFO" | "WARNING" | "INTERVENTION" | "CRITICAL";
   severity: number;
   message: string;
   root_cause?: string;
@@ -72,5 +79,5 @@ export interface InterventionEvent {
   target_value: number;
   actual_value?: number;
   verified: boolean;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  status: "PENDING" | "SUCCESS" | "FAILED";
 }

@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+import asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from .api import machines
 from .mqtt.client import mqtt_client
@@ -27,3 +28,18 @@ async def shutdown_event():
 @app.get("/")
 def read_root():
     return {"status": "online", "service": "MANDOR Backend"}
+
+@app.websocket("/ws/telemetry")
+async def telemetry_socket(websocket: WebSocket):
+    await websocket.accept()
+    queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+    mqtt_client.add_telemetry_listener(loop, queue)
+    try:
+        while True:
+            telemetry = await queue.get()
+            await websocket.send_json(telemetry)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        mqtt_client.remove_telemetry_listener(loop, queue)
