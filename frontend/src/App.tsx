@@ -9,6 +9,8 @@ import { Alerts } from './pages/Alerts';
 import { RootCauseAnalysis } from './pages/RootCauseAnalysis';
 import { Energy } from './pages/Energy';
 import { DigitalTwin } from './pages/DigitalTwin';
+import { MachinePrediction } from './pages/MachinePrediction';
+import { MaintenanceChatbot } from './pages/MaintenanceChatbot';
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
           <Route path="fleet" element={<FleetMonitoring />} />
           <Route path="machine/:id" element={<MachineDetail />} />
           <Route path="alerts" element={<Alerts />} />
+          <Route path="predictions" element={<MachinePrediction />} />
+          <Route path="chatbot" element={<MaintenanceChatbot />} />
           <Route path="rca" element={<RootCauseAnalysis />} />
           <Route path="production" element={<Reports />} />
           <Route path="production-data" element={<ProductionData />} />

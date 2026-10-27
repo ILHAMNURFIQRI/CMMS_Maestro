@@ -1,6 +1,6 @@
-# 📘 Tutorial Lengkap: Mengintegrasikan UI Mandor dengan Backend & MQTT
+# Tutorial Lengkap: Mengintegrasikan UI MAESTRO dengan Backend & MQTT
 
-Dokumen ini berisi panduan teknis lengkap tentang bagaimana cara mengganti aplikasi prototipe MANDOR dari **Standalone Mode** (Simulasi Lokal) menjadi **Connected Mode** (Tersambung ke Backend FastAPI, Database MySQL, dan MQTT Broker sungguhan).
+Dokumen ini menjelaskan arsitektur aplikasi MAESTRO dalam **Standalone Mode** dan **Connected Mode** yang menggunakan FastAPI, MongoDB, serta MQTT.
 
 ---
 
@@ -19,20 +19,19 @@ Untuk beralih ke Backend sungguhan, kita **tidak perlu** mengubah komponen UI (s
 
 Sebelum UI bisa menyambung, pastikan Backend Anda sedang berjalan.
 
-1. **Jalankan Infrastruktur Dasar (MQTT & MySQL)**
-   Buka terminal di dalam folder utama proyek `mandor`, lalu jalankan Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
-   *(Ini akan menyalakan Mosquitto MQTT di port 1883 dan MySQL di port 3306)*
+1. **Jalankan Infrastruktur Dasar (MongoDB & MQTT)**
+   Pastikan layanan MongoDB lokal berjalan (atau siapkan URI MongoDB Atlas pada `backend/.env`). MongoDB lokal pada port 27017 digunakan secara default.
+
+   Jalankan broker Mosquitto lokal di port 1883 untuk koneksi ESP32.
 
 2. **Jalankan API Server (FastAPI)**
-   Buka terminal baru, masuk ke folder `mandor/backend`, instal *requirements*, dan nyalakan server:
+   Buka terminal baru, masuk ke folder `mandor/backend`, instal dependensi, latih model jika belum ada, lalu nyalakan server:
    ```bash
    pip install -r requirements.txt
+   python -m app.ai.training
    uvicorn app.main:app --reload --port 8000
    ```
-   *(Backend sekarang berjalan di `http://localhost:8000`)*
+   Pada startup backend membuat database `maestro_cmms`, lima koleksi MongoDB, indeks histori, dan seed mesin jika belum tersedia. Backend berjalan di `http://localhost:8000`.
 
 ---
 
@@ -151,7 +150,7 @@ import mqtt from 'mqtt';
 const client = mqtt.connect('ws://localhost:9001'); 
 
 client.on('connect', () => {
-  console.log('Terhubung ke Backend MANDOR MQTT');
+  console.log('Terhubung ke Backend MAESTRO MQTT');
   client.subscribe('mandor/telemetry/#'); // Berlangganan ke semua data mesin
 });
 
@@ -169,5 +168,5 @@ client.on('message', (topic, message) => {
 Setelah Anda melakukan 4 langkah di atas:
 1. Tombol **CONNECTED** di pojok kanan atas UI akan berfungsi nyata.
 2. Ketika ditekan, UI akan mengambil data dari `http://localhost:8000`.
-3. Laporan **PDF/CSV/JSON** di halaman *Reports* akan secara otomatis mengunduh data dari database MySQL Anda, bukan lagi dari memori tiruan!
+3. Endpoint prediksi menyimpan pembacaan sensor ke `sensor_readings`, hasil AI ke `predictions`, dan kondisi `WARNING` atau `CRITICAL` ke `alerts`. Intervensi disimpan sebagai dokumen `maintenance_work_orders`.
 4. Root Cause Analysis (RCA) akan mengambil analisis asli dari skrip Python di backend Anda.

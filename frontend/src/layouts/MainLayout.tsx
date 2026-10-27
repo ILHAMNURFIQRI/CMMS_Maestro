@@ -11,6 +11,8 @@ import {
   Zap,
   Microscope,
   BarChart3,
+  BrainCircuit,
+  MessageSquareText,
 } from "lucide-react";
 import { simulationEngine } from "../services/SimulationEngine";
 
@@ -34,10 +36,10 @@ export const MainLayout = () => {
           <Activity className="text-neo-black w-6 h-6 mr-3 stroke-[3px]" />
           <div>
             <h1 className="text-2xl font-black tracking-widest text-neo-black m-0">
-              MANDOR
+              MAESTRO
             </h1>
             <span className="text-[10px] text-neo-black font-mono font-bold tracking-widest uppercase">
-              Analytics Router
+              Manufacturing Tracker
             </span>
           </div>
         </div>
@@ -57,6 +59,16 @@ export const MainLayout = () => {
             to="/alerts"
             icon={<FileWarning size={20} strokeWidth={2.5} />}
             label="Alerts"
+          />
+          <NavItem
+            to="/predictions"
+            icon={<BrainCircuit size={20} strokeWidth={2.5} />}
+            label="AI Prediction"
+          />
+          <NavItem
+            to="/chatbot"
+            icon={<MessageSquareText size={20} strokeWidth={2.5} />}
+            label="Maintenance Chatbot"
           />
           <NavItem
             to="/rca"
@@ -113,7 +125,7 @@ export const MainLayout = () => {
         {/* Header */}
         <header className="h-16 border-b-[3px] border-neo-black bg-neo-card flex items-center justify-between px-6 z-10">
           <div className="font-mono font-bold text-sm text-neo-muted">
-            MACHINE ANALYTICS & NETWORK DIAGNOSTIC OPERATIONS ROUTER
+            MAESTRO: MANUFACTURING EXECUTION & SYNCHRONIZATION TRACKER
           </div>
 
           {/* Mode Switcher */}
@@ -138,7 +150,7 @@ export const MainLayout = () => {
           <div className="flex-1 p-6 relative">
             {mode === "STANDALONE" && (
               <div className="absolute top-2 right-6 z-10 font-mono font-bold text-[10px] text-white bg-neo-blue border-2 border-neo-black px-2 py-1 shadow-neo-sm">
-                DATA SOURCE: LOCAL SIMULATION
+                UI MODE: STANDALONE DEMO
               </div>
             )}
             <Outlet context={{ mode }} />

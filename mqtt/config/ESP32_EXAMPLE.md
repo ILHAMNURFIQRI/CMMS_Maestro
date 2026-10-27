@@ -1,6 +1,6 @@
 # ESP32 MQTT Integration Example for M-16 (CONVEYOR-01)
 
-This is an example C++ sketch for Arduino IDE to integrate an ESP32 with MANDOR.
+This is an example C++ sketch for Arduino IDE to integrate an ESP32 with MAESTRO.
 
 ## Prerequisites
 - PubSubClient library by Nick O'Leary

@@ -1,10 +1,29 @@
 import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pymongo.errors import PyMongoError
+
+from .api import ai
+from .api import chatbot
 from .api import machines
+from .database.connection import initialize_database
 from .mqtt.client import mqtt_client
 
-app = FastAPI(title="MANDOR API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    initialize_database()
+    mqtt_client.start()
+    try:
+        yield
+    finally:
+        mqtt_client.stop()
+
+
+app = FastAPI(title="MAESTRO API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,19 +34,20 @@ app.add_middleware(
 )
 
 app.include_router(machines.router, prefix="/api")
+app.include_router(ai.router, prefix="/api/ai", tags=["AI predictions"])
+app.include_router(chatbot.router, prefix="/api/chatbot", tags=["Maintenance chatbot"])
 
-@app.on_event("startup")
-async def startup_event():
-    # Start MQTT Client
-    mqtt_client.start()
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    mqtt_client.stop()
+@app.exception_handler(PyMongoError)
+async def mongodb_error_handler(_, error: PyMongoError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"MongoDB is unavailable: {error.__class__.__name__}"},
+    )
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "service": "MANDOR Backend"}
+    return {"status": "online", "service": "MAESTRO Backend"}
 
 @app.websocket("/ws/telemetry")
 async def telemetry_socket(websocket: WebSocket):

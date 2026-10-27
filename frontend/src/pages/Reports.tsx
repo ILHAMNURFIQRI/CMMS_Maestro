@@ -198,7 +198,7 @@ export const Reports = () => {
 
       downloadFile(
         csvContent,
-        `mandor_fleet_report_${new Date().toISOString().split("T")[0]}.csv`,
+        `maestro_fleet_report_${new Date().toISOString().split("T")[0]}.csv`,
         "text/csv",
       );
     } catch (e: any) {
@@ -226,7 +226,7 @@ export const Reports = () => {
 
       downloadFile(
         jsonContent,
-        `mandor_fleet_report_${new Date().toISOString().split("T")[0]}.json`,
+        `maestro_fleet_report_${new Date().toISOString().split("T")[0]}.json`,
         "application/json",
       );
     } catch (e: any) {
@@ -247,7 +247,7 @@ export const Reports = () => {
       // Title
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
-      doc.text("MANDOR COMPREHENSIVE FLEET REPORT", 14, 22);
+      doc.text("MAESTRO COMPREHENSIVE FLEET REPORT", 14, 22);
 
       // Summary Stats
       const normalCount = data.filter(
@@ -359,7 +359,7 @@ export const Reports = () => {
       }
 
       doc.save(
-        `mandor_comprehensive_report_${new Date().toISOString().split("T")[0]}.pdf`,
+        `maestro_comprehensive_report_${new Date().toISOString().split("T")[0]}.pdf`,
       );
     } catch (e: any) {
       console.error("PDF Generation Error:", e);

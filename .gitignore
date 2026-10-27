@@ -4,6 +4,7 @@ venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
+backend/app/ai/artifacts/*.joblib
 
 # Environment and local secrets
 .env

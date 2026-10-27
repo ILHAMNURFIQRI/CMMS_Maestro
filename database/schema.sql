@@ -1,3 +1,5 @@
+-- Legacy MySQL schema; the FastAPI backend now initializes MongoDB collections
+-- and indexes from backend/app/database/connection.py.
 CREATE DATABASE IF NOT EXISTS mandor;
 USE mandor;
 
