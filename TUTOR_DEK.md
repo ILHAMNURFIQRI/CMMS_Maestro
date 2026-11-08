@@ -21,7 +21,7 @@ Integrates real-world infrastructure:
 - **MQTT**: Mosquitto Broker (native) for communication with the physical M-16 ESP32 Conveyor
 
 ## Prerequisites
-- Node.js (v18+)
+- Node.js 20.19+, 22.12+, or 24+
 
 **For Connected Mode Only:**
 - Python (3.10+)
@@ -48,20 +48,27 @@ Start a local MongoDB server or create a MongoDB Atlas cluster. Configure
 creates the collections and indexes and seeds the machine fleet if machines
 have not been added already.
 
-The database is `maestro_cmms` by default and uses five collections:
+The database is `maestro_cmms` by default and uses these collections:
 
 - `machines`: machine identity, line, area, current status, and health score.
 - `sensor_readings`: manual and MQTT sensor readings, source, and timestamp.
 - `predictions`: AI result, class probabilities, model, and linked reading ID.
 - `alerts`: warning and critical predictions requiring follow-up.
-- `maintenance_work_orders`: maintenance interventions and their status.
+- `maintenance_work_orders`: typed Maintenance Work Orders and machine
+  intervention events.
+- `production_orders`: Customer production requests and workflow history.
+- `products`: product catalog and finished-goods snapshots.
+- `users`: account roles and password hashes.
+- `auth_sessions`: hashed session tokens and expiration times.
 
-The backend creates timestamp indexes for sensor readings, predictions, alerts,
-and work orders. Sensor and prediction history is retained; there is no TTL
-deletion configured.
+The backend creates lookup/time indexes for sessions, sensor readings,
+predictions, alerts, Maintenance Work Orders, production orders, and users.
+Sensor and prediction history is retained; there is no TTL deletion configured.
 
 #### 2. Setup MQTT Broker
-Ensure Mosquitto is installed and running locally on port 1883.
+For local development, ensure Mosquitto is installed and running on port 1883.
+For hosting, use a private broker with TLS and authentication; do not use a
+shared public broker for machine telemetry or control.
 
 #### 3. Start Backend
 ```bash
@@ -127,7 +134,35 @@ ollama pull qwen2.5:3b
 
 Copy `backend/.env.example` to `backend/.env` if needed. The default `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` values target Ollama at `http://localhost:11434/v1`. Ollama Desktop generally starts its local service automatically; otherwise start it with `ollama serve`. To use another OpenAI-compatible provider, explicitly set those three variables in `backend/.env`; prompts and selected machine data will then be sent to that provider, so review its privacy and retention terms first. Never place provider credentials in frontend code.
 
-The chatbot defaults to **Semua mesin**, adding each registered machine's latest sensor reading, prediction, and work order as read-only context; this lets users ask fleet-wide questions or name a machine in their prompt. Select one machine in **CAKUPAN MESIN** to send context only for that machine. If using a cloud LLM provider, fleet or selected machine data is sent to that provider along with the prompt; review its privacy and retention terms. The current conversation is saved in this browser's local storage and remains available across page navigation and browser restarts. Select **CHAT BARU** to clear it and begin again. This history is local to the browser and is not synchronized to MongoDB or other devices; do not enter credentials or sensitive data. The chatbot is restricted to MAESTRO/CMMS and related maintenance topics; code-generation requests and unrelated general questions are refused before contacting the LLM provider. The chatbot does not create work orders, change MongoDB records, or control equipment. Its answer is advisory; follow the applicable OEM manual, site SOP, and qualified technician's assessment. The backend API has no user authentication, so keep it on a trusted development network and do not expose it publicly without adding authentication and request controls.
+The Maintenance Chatbot is available to Manager and Operator accounts. Manager and Operator conversations are stored under separate browser-local keys. The Manager assistant can use production-order context while the Operator assistant is limited to machine/production execution context; neither can change MongoDB records or control equipment. If using a cloud LLM provider, the relevant machine and role-allowed production context is sent with the prompt, so review the provider's privacy and retention terms. Answers are advisory; follow the applicable OEM manual, site SOP, and qualified technician's assessment.
+
+#### Production Orders and Role Access
+
+The Customer portal creates **Production Orders** (requests to manufacture products). This is separate from a CMMS **Maintenance Work Order**, which records maintenance or repair work. A Customer may save a draft, submit it to a Manager, and revise it when requested. A Manager reviews submitted orders and, after approval, schedules the order on M-16. An Operator can start only scheduled orders, record production progress, and complete the requested quantity. Managers do not see unsubmitted Customer drafts; Operators see scheduled and active/completed production orders without Customer email details.
+
+Maintenance Work Orders can be submitted by Managers or Operators and follow
+`SUBMITTED → NEEDS_INFO → SUBMITTED`, or `SUBMITTED → TRIAGED → SCHEDULED →
+IN_PROGRESS ↔ ON_HOLD → PENDING_VERIFICATION → CLOSED`. A Manager may reject
+or cancel an order, and may return completed work to triage. Managers set
+priority, assign an active Operator, schedule the machine, and verify completed
+work. Operators record work performed, parts used, and downtime. An alert can
+prefill a WO proposal, but it does not create a WO until submitted and never
+sends an MQTT machine-control command. Operators can see only orders they
+submitted or were assigned.
+
+Product stock shown in the catalog is a snapshot of **finished goods**, not raw-material availability. Raw materials are marked as not assessed because a bill of materials is not yet modeled; the demo does not reserve or deduct stock. Production-time estimates use a deterministic sample capacity baseline, not AI and not a delivery guarantee. The Customer assistant has a separate endpoint and receives only the public catalog plus the signed-in Customer's own order summaries; it cannot query machine, fleet, sensor, or another Customer's order context.
+
+Backend login uses an HTTP-only session cookie and role checks. Configure `AUTH_BOOTSTRAP_EMAIL` and `AUTH_BOOTSTRAP_PASSWORD` in `backend/.env` to provision the initial Manager; Managers can create subsequent user accounts. The sign-in page's role simulation links are for local UI demonstrations only and do not authenticate API requests.
+
+The authenticated Manager and Operator workspaces have separate sidebars and
+route access. Manager navigation focuses on order approval/scheduling, a
+read-only product catalog, Maintenance Work Orders, production/MES data,
+reports, and the Manager assistant. Operator navigation focuses on the
+production dashboard, Maintenance Work Orders, fleet and machine monitoring,
+alerts, prediction, RCA, energy, digital twin, execution of scheduled orders,
+and the Operator assistant. Shared report/data pages are presented under the
+relevant role's navigation; Manager-only catalog and overview pages are not
+available to Operators.
 
 #### 5. Start Frontend
 ```bash
@@ -137,6 +172,10 @@ npm run dev
 ```
 
 Open `http://localhost:5173` and toggle the Mode Switcher to **CONNECTED**.
+
+For Vercel, Render, and MongoDB Atlas deployment, follow [HOSTING.md](./HOSTING.md).
+The React routes are split into lazy-loaded page bundles to reduce the initial
+frontend download.
 
 ## Environment Variables
 Copy the `.env.example` file in the `backend` directory to `.env` and configure your credentials.

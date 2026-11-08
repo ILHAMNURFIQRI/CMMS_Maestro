@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import ssl
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,10 @@ MQTT_BROKER = os.getenv("MQTT_BROKER_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_TLS_VALUE = os.getenv("MQTT_TLS", "false").strip().lower()
+if MQTT_TLS_VALUE not in {"true", "false"}:
+    raise RuntimeError("MQTT_TLS must be either true or false.")
+MQTT_TLS = MQTT_TLS_VALUE == "true"
 ESP_TOPIC = os.getenv("MQTT_ESP_TOPIC", "mesin/monitoring/data")
 CONTROL_TOPIC = os.getenv("MQTT_CONTROL_TOPIC", "mesin/kontrol/perintah")
 ESP_MACHINE_ID = os.getenv("MQTT_ESP_MACHINE_ID", "M-16")
@@ -35,6 +40,8 @@ class MqttClientManager:
         )
         if MQTT_USERNAME:
             self.client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+        if MQTT_TLS:
+            self.client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.telemetry_listeners: list[tuple[asyncio.AbstractEventLoop, asyncio.Queue]] = []
@@ -205,19 +212,24 @@ class MqttClientManager:
         )
         return {"NORMAL": 100, "WARNING": 60, "CRITICAL": 30}[status]
 
-    def publish_command(self, machine_id: str, target_rpm: float, reason: str) -> None:
+    def publish_command(self, machine_id: str, target_rpm: float, reason: str) -> bool:
+        if not self.client.is_connected():
+            logger.warning("Cannot queue MQTT command for %s while disconnected", machine_id)
+            return False
+
         pwm = round(max(0, min(255, (target_rpm / 600.0) * 255)))
         status = "KRITIS" if pwm == 0 else "WARNING" if pwm < 200 else "NORMAL"
         payload = json.dumps({"status": status, "pwm": pwm})
         result = self.client.publish(CONTROL_TOPIC, payload)
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             logger.error("Failed to publish MQTT command for %s: %s", machine_id, result.rc)
-            return
-        logger.info("Published MQTT command for %s (%s): %s", machine_id, reason, payload)
+            return False
+        logger.info("Queued MQTT command for %s (%s): %s", machine_id, reason, payload)
+        return True
 
     def start(self) -> None:
         try:
-            self.client.connect(MQTT_BROKER, MQTT_PORT, 60)
+            self.client.connect_async(MQTT_BROKER, MQTT_PORT, 60)
             self.client.loop_start()
         except OSError:
             logger.exception("Failed to connect to MQTT broker at %s:%s", MQTT_BROKER, MQTT_PORT)

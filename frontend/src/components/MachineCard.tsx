@@ -51,7 +51,7 @@ export const MachineCard = ({
   return (
     <div
       className={`neo-card p-0 overflow-hidden cursor-pointer flex flex-col h-full ${getCardBg(evaluatedStatus)}`}
-      onClick={() => navigate(`/machine/${machine.id}`)}
+      onClick={() => navigate(`/app/machine/${machine.id}`)}
     >
       <div
         className={`px-4 py-2 border-b-[3px] border-neo-black flex justify-between items-center ${getStatusColorClass(evaluatedStatus)}`}

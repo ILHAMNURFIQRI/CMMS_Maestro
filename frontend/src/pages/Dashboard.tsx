@@ -1,5 +1,4 @@
-import { useOutletContext } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, AlertTriangle, Zap, CheckCircle } from 'lucide-react';
 
 export const Dashboard = () => {

@@ -1,4 +1,4 @@
-import type { Machine, Telemetry, Alert, RootCauseAnalysis, InterventionEvent, ProductionMetrics, EnergyMetrics } from '../types/machine';
+import type { Machine, Telemetry } from '../types/machine';
 
 const KEYS = {
   MACHINES: 'mandor_machines',

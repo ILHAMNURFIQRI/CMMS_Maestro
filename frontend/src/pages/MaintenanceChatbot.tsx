@@ -13,9 +13,9 @@ import {
   apiDataProvider,
   type ChatTurn,
 } from "../services/ApiDataProvider";
+import { currentOrderRole } from "../services/ProductionOrders";
 import type { Machine } from "../types/machine";
 
-const CHAT_STORAGE_KEY = "maestro-maintenance-chat";
 const ALL_MACHINES = "__ALL_MACHINES__";
 
 interface PersistedChat {
@@ -34,9 +34,9 @@ function isChatTurn(message: unknown): message is ChatTurn {
   );
 }
 
-function loadPersistedChat(): PersistedChat {
+function loadPersistedChat(storageKey: string): PersistedChat {
   try {
-    const savedChat = localStorage.getItem(CHAT_STORAGE_KEY);
+    const savedChat = localStorage.getItem(storageKey);
     if (!savedChat) return { messages: [], error: null };
 
     const parsed: unknown = JSON.parse(savedChat);
@@ -67,7 +67,10 @@ const SUGGESTED_QUESTIONS = [
 
 export const MaintenanceChatbot = () => {
   const { mode } = useOutletContext<{ mode: string }>();
-  const [persistedChat] = useState(loadPersistedChat);
+  const role = currentOrderRole();
+  const isManager = role === "manager";
+  const chatStorageKey = `maestro-maintenance-chat-${role ?? "unknown"}`;
+  const [persistedChat] = useState(() => loadPersistedChat(chatStorageKey));
   const [machines, setMachines] = useState<Machine[]>([]);
   const [machineId, setMachineId] = useState(ALL_MACHINES);
   const [messages, setMessages] = useState<ChatTurn[]>(persistedChat.messages);
@@ -84,7 +87,7 @@ export const MaintenanceChatbot = () => {
   const saveMessages = (updatedMessages: ChatTurn[]) => {
     setMessages(updatedMessages);
     try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(updatedMessages));
+      localStorage.setItem(chatStorageKey, JSON.stringify(updatedMessages));
       setChatStorageError(null);
     } catch (saveError: unknown) {
       setChatStorageError(
@@ -169,12 +172,13 @@ export const MaintenanceChatbot = () => {
       <header>
         <h2 className="inline-flex items-center gap-2 border-[3px] border-neo-black bg-neo-blue px-3 py-2 text-2xl uppercase tracking-widest text-white shadow-neo sm:text-3xl">
           <MessageSquareText size={26} />
-          Maintenance Chatbot
+          {isManager ? "Manager Assistant" : "Operator Assistant"}
         </h2>
         <p className="mt-3 max-w-3xl font-mono text-sm text-neo-muted">
-          Konsultasi maintenance dengan konteks semua mesin secara default.
-          Pilih satu mesin untuk membatasi pertanyaan; jawaban tetap harus
-          diverifikasi dengan SOP fasilitas dan teknisi berwenang.
+          {isManager
+            ? "Bantuan untuk validasi dan penjadwalan Production Order, serta pemantauan konteks mesin. Estimasi AI bukan keputusan persetujuan."
+            : "Bantuan untuk pemantauan mesin, sensor, dan Production Order yang telah dijadwalkan. Jawaban tetap harus diverifikasi dengan SOP dan teknisi berwenang."}{" "}
+          Pilih satu mesin untuk membatasi pertanyaan.
         </p>
       </header>
 
@@ -269,7 +273,14 @@ export const MaintenanceChatbot = () => {
                   diberikan sebagai konteks baca-saja.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {SUGGESTED_QUESTIONS.map((question) => (
+                  {(isManager
+                    ? [
+                        "Order produksi mana yang menunggu validasi Manager?",
+                        "Informasi apa yang perlu diperiksa sebelum menjadwalkan di M-16?",
+                        ...SUGGESTED_QUESTIONS.slice(0, 1),
+                      ]
+                    : SUGGESTED_QUESTIONS
+                  ).map((question) => (
                     <button
                       key={question}
                       type="button"

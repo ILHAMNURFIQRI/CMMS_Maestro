@@ -1,92 +1,184 @@
-import { useState, useEffect } from 'react';
-import { localDataProvider } from '../services/LocalDataProvider';
-import type { Alert } from '../types/machine';
-import { FileWarning, CheckCircle } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { localDataProvider } from "../services/LocalDataProvider";
+import type { Alert } from "../types/machine";
+import { FileWarning, CheckCircle, Wrench } from "lucide-react";
+
+const demoAlerts: Alert[] = [
+  {
+    id: "ALR-1",
+    machine_id: "M-16",
+    timestamp: new Date(Date.now() - 5 * 60_000).toISOString(),
+    type: "WARNING",
+    severity: 2,
+    message: "Vibration deviation detected on main axis.",
+    acknowledged: false,
+  },
+  {
+    id: "ALR-2",
+    machine_id: "M-09",
+    timestamp: new Date(Date.now() - 45 * 60_000).toISOString(),
+    type: "CRITICAL",
+    severity: 3,
+    message: "Spindle overload. Emergency stop triggered.",
+    acknowledged: false,
+  },
+  {
+    id: "ALR-3",
+    machine_id: "M-03",
+    timestamp: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+    type: "INFO",
+    severity: 1,
+    message: "Scheduled maintenance reminder.",
+    acknowledged: true,
+  },
+  {
+    id: "ALR-4",
+    machine_id: "M-12",
+    timestamp: new Date(Date.now() - 4 * 60 * 60_000).toISOString(),
+    type: "WARNING",
+    severity: 2,
+    message: "Temperature rising above baseline.",
+    acknowledged: false,
+  },
+];
 
 export const Alerts = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Generate dummy alerts if the datastore is empty
-    const fetchAlerts = async () => {
-      const dbAlerts = await localDataProvider.getAlerts();
-      if (dbAlerts.length === 0) {
-        setAlerts([
-          { id: 'ALR-1', machine_id: 'M-16', timestamp: new Date(Date.now() - 1000*60*5).toISOString(), severity: 'WARNING', message: 'Vibration deviation detected on main axis.', resolved: false },
-          { id: 'ALR-2', machine_id: 'M-09', timestamp: new Date(Date.now() - 1000*60*45).toISOString(), severity: 'CRITICAL', message: 'Spindle overload. Emergency stop triggered.', resolved: false },
-          { id: 'ALR-3', machine_id: 'M-03', timestamp: new Date(Date.now() - 1000*60*60*2).toISOString(), severity: 'INFO', message: 'Scheduled maintenance reminder.', resolved: true },
-          { id: 'ALR-4', machine_id: 'M-12', timestamp: new Date(Date.now() - 1000*60*60*4).toISOString(), severity: 'WARNING', message: 'Temperature rising above baseline.', resolved: false },
-        ]);
-      } else {
-        setAlerts(dbAlerts);
-      }
-    };
-    fetchAlerts();
+    void localDataProvider
+      .getAlerts()
+      .then((dbAlerts) => setAlerts(dbAlerts.length > 0 ? dbAlerts : demoAlerts))
+      .catch((error: unknown) =>
+        setLoadError(
+          error instanceof Error ? error.message : "Could not load alerts.",
+        ),
+      );
   }, []);
 
   const acknowledgeAlert = (id: string) => {
-    setAlerts(alerts.map(a => a.id === id ? { ...a, resolved: true } : a));
+    setAlerts((previous) =>
+      previous.map((alert) =>
+        alert.id === id ? { ...alert, acknowledged: true } : alert,
+      ),
+    );
   };
 
-  const getSeverityStyles = (severity: string, resolved: boolean) => {
-    if (resolved) return 'bg-neo-silver text-neo-muted border-neo-muted';
-    if (severity === 'CRITICAL') return 'bg-status-critical text-white border-neo-black';
-    if (severity === 'WARNING') return 'bg-status-warning text-neo-black border-neo-black';
-    return 'bg-neo-blue text-white border-neo-black';
+  const getSeverityStyles = (type: Alert["type"], acknowledged: boolean) => {
+    if (acknowledged) return "bg-neo-silver text-neo-muted border-neo-muted";
+    if (type === "CRITICAL") return "bg-status-critical text-white border-neo-black";
+    if (type === "WARNING") return "bg-status-warning text-neo-black border-neo-black";
+    return "bg-neo-blue text-white border-neo-black";
   };
 
   return (
     <div className="space-y-6">
-      <div className="mb-6 flex justify-between items-end">
+      <div className="mb-6 flex items-end justify-between">
         <div>
-          <h2 className="text-4xl uppercase tracking-widest text-white bg-neo-blue inline-block px-2 border-[3px] border-neo-black shadow-neo">Alerts</h2>
-          <p className="text-neo-black font-mono font-bold text-sm mt-2 bg-neo-silver inline-block px-1 border-2 border-neo-black">CENTRAL ALARM LOG</p>
+          <h2 className="inline-block border-[3px] border-neo-black bg-neo-blue px-2 text-4xl uppercase tracking-widest text-white shadow-neo">
+            Alerts
+          </h2>
+          <p className="mt-2 inline-block border-2 border-neo-black bg-neo-silver px-1 font-mono text-sm font-bold text-neo-black">
+            CENTRAL ALARM LOG
+          </p>
         </div>
-        <div className="neo-card bg-white p-2 flex items-center space-x-4">
-          <div className="flex items-center text-xs font-mono font-bold"><span className="w-3 h-3 bg-status-critical border border-black mr-2"></span> {alerts.filter(a => a.severity === 'CRITICAL' && !a.resolved).length} CRIT</div>
-          <div className="flex items-center text-xs font-mono font-bold"><span className="w-3 h-3 bg-status-warning border border-black mr-2"></span> {alerts.filter(a => a.severity === 'WARNING' && !a.resolved).length} WARN</div>
+        <div className="neo-card flex items-center space-x-4 bg-white p-2">
+          <div className="flex items-center font-mono text-xs font-bold">
+            <span className="mr-2 h-3 w-3 border border-black bg-status-critical" />
+            {alerts.filter((alert) => alert.type === "CRITICAL" && !alert.acknowledged).length}{" "}
+            CRIT
+          </div>
+          <div className="flex items-center font-mono text-xs font-bold">
+            <span className="mr-2 h-3 w-3 border border-black bg-status-warning" />
+            {alerts.filter((alert) => alert.type === "WARNING" && !alert.acknowledged).length}{" "}
+            WARN
+          </div>
         </div>
       </div>
 
-      <div className="neo-card p-0 bg-white">
-        <div className="p-4 border-b-[3px] border-neo-black bg-neo-black text-white flex items-center">
+      {loadError && (
+        <p className="border-2 border-neo-black bg-red-100 p-3 font-mono text-sm text-red-800">
+          {loadError}
+        </p>
+      )}
+
+      <div className="neo-card bg-white p-0">
+        <div className="flex items-center border-b-[3px] border-neo-black bg-neo-black p-4 text-white">
           <FileWarning className="mr-2" />
           <h3 className="text-lg font-black uppercase">Active & Recent Alerts</h3>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-sm">
             <thead className="bg-neo-silver text-neo-black">
               <tr>
-                <th className="p-4 border-b-2 border-r-2 border-neo-black">ID</th>
-                <th className="p-4 border-b-2 border-r-2 border-neo-black">TIME</th>
-                <th className="p-4 border-b-2 border-r-2 border-neo-black">MACHINE</th>
-                <th className="p-4 border-b-2 border-r-2 border-neo-black">SEVERITY</th>
-                <th className="p-4 border-b-2 border-r-2 border-neo-black">MESSAGE</th>
-                <th className="p-4 border-b-2 border-neo-black text-center">ACTION</th>
+                <th className="border-b-2 border-r-2 border-neo-black p-4">ID</th>
+                <th className="border-b-2 border-r-2 border-neo-black p-4">TIME</th>
+                <th className="border-b-2 border-r-2 border-neo-black p-4">MACHINE</th>
+                <th className="border-b-2 border-r-2 border-neo-black p-4">SEVERITY</th>
+                <th className="border-b-2 border-r-2 border-neo-black p-4">MESSAGE</th>
+                <th className="border-b-2 border-neo-black p-4 text-center">ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {alerts.map((alert, i) => (
-                <tr key={alert.id} className={i % 2 === 0 ? 'bg-neo-bg' : 'bg-white'}>
-                  <td className="p-4 border-b-2 border-r-2 border-neo-black font-bold text-neo-muted">{alert.id}</td>
-                  <td className="p-4 border-b-2 border-r-2 border-neo-black font-bold">{new Date(alert.timestamp).toLocaleTimeString()}</td>
-                  <td className="p-4 border-b-2 border-r-2 border-neo-black">
-                    <span className="bg-white border-2 border-neo-black px-2 py-1 font-black">{alert.machine_id}</span>
+              {alerts.map((alert, index) => (
+                <tr
+                  className={index % 2 === 0 ? "bg-neo-bg" : "bg-white"}
+                  key={alert.id}
+                >
+                  <td className="border-b-2 border-r-2 border-neo-black p-4 font-bold text-neo-muted">
+                    {alert.id}
                   </td>
-                  <td className="p-4 border-b-2 border-r-2 border-neo-black">
-                    <span className={`px-2 py-1 border-[2px] font-black ${getSeverityStyles(alert.severity, alert.resolved)}`}>
-                      {alert.resolved ? 'RESOLVED' : alert.severity}
+                  <td className="border-b-2 border-r-2 border-neo-black p-4 font-bold">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </td>
+                  <td className="border-b-2 border-r-2 border-neo-black p-4">
+                    <span className="border-2 border-neo-black bg-white px-2 py-1 font-black">
+                      {alert.machine_id}
                     </span>
                   </td>
-                  <td className={`p-4 border-b-2 border-r-2 border-neo-black font-bold ${alert.resolved ? 'text-neo-muted line-through' : ''}`}>
+                  <td className="border-b-2 border-r-2 border-neo-black p-4">
+                    <span
+                      className={`border-[2px] px-2 py-1 font-black ${getSeverityStyles(alert.type, alert.acknowledged)}`}
+                    >
+                      {alert.acknowledged ? "ACKNOWLEDGED" : alert.type}
+                    </span>
+                  </td>
+                  <td
+                    className={`border-b-2 border-r-2 border-neo-black p-4 font-bold ${alert.acknowledged ? "text-neo-muted line-through" : ""}`}
+                  >
                     {alert.message}
                   </td>
-                  <td className="p-4 border-b-2 border-neo-black text-center">
-                    {!alert.resolved ? (
-                      <button 
+                  <td className="space-y-2 border-b-2 border-neo-black p-4 text-center">
+                    {!alert.acknowledged && (
+                      <button
+                        className="neo-btn !px-2 !py-1 !text-xs !bg-neo-blue !text-white"
+                        onClick={() =>
+                          navigate("/app/maintenance-work-orders", {
+                            state: {
+                              alert: {
+                                id: alert.id,
+                                machine_id: alert.machine_id,
+                                message: alert.message,
+                                severity: alert.type,
+                              },
+                            },
+                          })
+                        }
+                        type="button"
+                      >
+                        <Wrench className="mr-1 inline" size={14} />
+                        BUAT USULAN WO
+                      </button>
+                    )}
+                    {!alert.acknowledged ? (
+                      <button
+                        className="neo-btn !px-2 !py-1 !text-xs"
                         onClick={() => acknowledgeAlert(alert.id)}
-                        className="neo-btn !bg-neo-blue !text-white !py-1 !px-2 !text-xs hover:scale-[1.05]"
+                        type="button"
                       >
                         ACKNOWLEDGE
                       </button>
@@ -98,7 +190,12 @@ export const Alerts = () => {
               ))}
               {alerts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center font-bold text-neo-muted bg-neo-bg">No alerts found. System is stable.</td>
+                  <td
+                    className="bg-neo-bg p-8 text-center font-bold text-neo-muted"
+                    colSpan={6}
+                  >
+                    No alerts found. System is stable.
+                  </td>
                 </tr>
               )}
             </tbody>

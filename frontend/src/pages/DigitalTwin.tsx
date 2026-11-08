@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { localDataProvider } from '../services/LocalDataProvider';
 import type { Machine, Telemetry } from '../types/machine';
-import { Map, Zap, Thermometer, Wind, RefreshCw } from 'lucide-react';
+import { Zap, Thermometer, Wind, RefreshCw } from 'lucide-react';
 
 export const DigitalTwin = () => {
   const [machines, setMachines] = useState<Machine[]>([]);

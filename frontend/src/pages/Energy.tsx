@@ -5,11 +5,14 @@ export const Energy = () => {
   // Mock data for factory energy consumption
   const hourlyData = Array.from({ length: 24 }).map((_, i) => ({
     hour: `${i.toString().padStart(2, '0')}:00`,
-    line1: 120 + Math.random() * 40 + (i > 8 && i < 18 ? 80 : 0),
-    line2: 90 + Math.random() * 30 + (i > 8 && i < 18 ? 60 : 0),
-    total: 0
+    line1: 120 + ((i * 17) % 40) + (i > 8 && i < 18 ? 80 : 0),
+    line2: 90 + ((i * 13) % 30) + (i > 8 && i < 18 ? 60 : 0),
+    total:
+      210 +
+      ((i * 17) % 40) +
+      ((i * 13) % 30) +
+      (i > 8 && i < 18 ? 140 : 0),
   }));
-  hourlyData.forEach(d => d.total = d.line1 + d.line2);
 
   const totalToday = Math.round(hourlyData.reduce((acc, curr) => acc + curr.total, 0));
   const peakLoad = Math.round(Math.max(...hourlyData.map(d => d.total)));

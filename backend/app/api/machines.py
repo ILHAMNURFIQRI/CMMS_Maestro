@@ -2,14 +2,17 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import DESCENDING
 from pymongo.database import Database
 
+from ..auth import require_roles
 from ..database.connection import get_db, serialize_document
 from ..mqtt.client import ESP_MACHINE_ID, mqtt_client
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_roles("manager", "operator"))]
+)
 
 
 class MachineResponse(BaseModel):
@@ -27,8 +30,16 @@ class MachineResponse(BaseModel):
 
 
 class InterventionRequest(BaseModel):
-    target_rpm: float = Field(ge=0)
+    target_rpm: float = Field(ge=0, allow_inf_nan=False)
     reason: str = Field(min_length=1, max_length=100)
+
+    @field_validator("reason")
+    @classmethod
+    def trim_reason(cls, value: str) -> str:
+        reason = value.strip()
+        if not reason:
+            raise ValueError("A reason is required")
+        return reason
 
 
 def _machine_response(machine: dict, db: Database) -> dict:
@@ -106,8 +117,13 @@ def get_work_orders(
     db: Database = Depends(get_db),
 ) -> list[dict]:
     work_orders = (
-        db.maintenance_work_orders.find({"machine_id": machine_id})
-        .sort("timestamp", DESCENDING)
+        db.maintenance_work_orders.find(
+            {
+                "machine_id": machine_id,
+                "record_type": "MAINTENANCE_WORK_ORDER",
+            }
+        )
+        .sort("updated_at", DESCENDING)
         .limit(limit)
     )
     return [
@@ -122,14 +138,20 @@ def trigger_intervention(
     request: InterventionRequest,
     db: Database = Depends(get_db),
 ) -> dict[str, str]:
+    if machine_id != ESP_MACHINE_ID:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Live intervention is only supported for {ESP_MACHINE_ID}",
+        )
     if db.machines.find_one({"_id": machine_id}) is None:
         raise HTTPException(status_code=404, detail="Machine not found")
 
-    work_order_id = f"INT-{uuid4().hex[:12].upper()}"
+    intervention_id = f"INT-{uuid4().hex[:12].upper()}"
     timestamp = datetime.now(timezone.utc)
     db.maintenance_work_orders.insert_one(
         {
-            "_id": work_order_id,
+            "_id": intervention_id,
+            "record_type": "MACHINE_INTERVENTION",
             "machine_id": machine_id,
             "timestamp": timestamp,
             "action": request.reason,
@@ -139,10 +161,23 @@ def trigger_intervention(
             "status": "PENDING",
         }
     )
-    if machine_id == ESP_MACHINE_ID:
-        mqtt_client.publish_command(
-            machine_id,
-            request.target_rpm,
-            request.reason,
+    published = mqtt_client.publish_command(
+        machine_id,
+        request.target_rpm,
+        request.reason,
+    )
+    if not published:
+        db.maintenance_work_orders.update_one(
+            {"_id": intervention_id},
+            {
+                "$set": {
+                    "status": "FAILED",
+                    "failure_reason": "MQTT command could not be queued",
+                }
+            },
         )
-    return {"status": "success", "intervention_id": work_order_id}
+        raise HTTPException(
+            status_code=503,
+            detail="The intervention was recorded, but MQTT did not accept the command",
+        )
+    return {"status": "queued", "intervention_id": intervention_id}

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from pymongo.database import Database
 
+from ..auth import require_roles
 from ..ai.predictor import (
     ModelArtifactNotFoundError,
     apply_machine_screening,
@@ -14,7 +15,9 @@ from ..ai.predictor import (
 from ..ai.training import FEATURE_NAMES
 from ..database.connection import get_db
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_roles("manager", "operator"))]
+)
 
 
 class SensorReading(BaseModel):

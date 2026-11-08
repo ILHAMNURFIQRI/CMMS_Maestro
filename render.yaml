@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: maestro-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python -m app.ai.training
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: maestro_cmms
+      - key: AUTH_BOOTSTRAP_EMAIL
+        sync: false
+      - key: AUTH_BOOTSTRAP_PASSWORD
+        sync: false
+      - key: AUTH_BOOTSTRAP_NAME
+        value: Initial Manager
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
+      - key: AUTH_COOKIE_SAMESITE
+        value: lax
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MQTT_BROKER_HOST
+        sync: false
+      - key: MQTT_BROKER_PORT
+        value: "8883"
+      - key: MQTT_USERNAME
+        sync: false
+      - key: MQTT_PASSWORD
+        sync: false
+      - key: MQTT_TLS
+        value: "true"
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false

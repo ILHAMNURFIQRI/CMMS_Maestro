@@ -118,7 +118,10 @@ function formatRequestError(status: number, detail: unknown): string {
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await fetch(url, {
+    ...init,
+    credentials: "include",
+  });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(formatRequestError(response.status, body?.detail));
@@ -176,6 +179,20 @@ export const apiDataProvider = {
         message,
         machine_id: machineId || null,
         all_machines: !machineId,
+        history: prepareChatHistory(history, message.length),
+      }),
+    });
+  },
+
+  async chatWithCustomerAssistant(
+    message: string,
+    history: ChatTurn[],
+  ): Promise<ChatResponse> {
+    return requestJson<ChatResponse>(`${API_URL}/chatbot/customer/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
         history: prepareChatHistory(history, message.length),
       }),
     });

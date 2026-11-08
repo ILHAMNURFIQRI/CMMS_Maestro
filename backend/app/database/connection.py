@@ -60,6 +60,16 @@ def serialize_document(document: dict[str, Any] | None) -> dict[str, Any] | None
 
 def initialize_database() -> None:
     MONGO_CLIENT.admin.command("ping")
+    DATABASE.users.create_index(
+        [("email", ASCENDING)],
+        unique=True,
+        name="user_email_unique",
+    )
+    DATABASE.auth_sessions.create_index(
+        [("expires_at", ASCENDING)],
+        expireAfterSeconds=0,
+        name="auth_session_expiry",
+    )
     DATABASE.sensor_readings.create_index(
         [("machine_id", ASCENDING), ("timestamp", DESCENDING)],
         name="machine_sensor_timestamp",
@@ -75,6 +85,22 @@ def initialize_database() -> None:
     DATABASE.maintenance_work_orders.create_index(
         [("machine_id", ASCENDING), ("timestamp", DESCENDING)],
         name="machine_work_order_timestamp",
+    )
+    DATABASE.maintenance_work_orders.create_index(
+        [("record_type", ASCENDING), ("status", ASCENDING), ("updated_at", DESCENDING)],
+        name="maintenance_work_order_status",
+    )
+    DATABASE.maintenance_work_orders.create_index(
+        [("record_type", ASCENDING), ("assigned_to_id", ASCENDING), ("updated_at", DESCENDING)],
+        name="maintenance_work_order_assignment",
+    )
+    DATABASE.production_orders.create_index(
+        [("customer_email", ASCENDING), ("created_at", DESCENDING)],
+        name="customer_production_orders",
+    )
+    DATABASE.production_orders.create_index(
+        [("status", ASCENDING), ("created_at", DESCENDING)],
+        name="production_order_status",
     )
 
     for machine_id, name, machine_type, line, area, data_source in INITIAL_MACHINES:
